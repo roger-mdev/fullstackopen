@@ -1,0 +1,15 @@
+{
+  "persons": [
+    {
+      "name": "Roger Goetsch",
+      "number": "123-45-45",
+      "id": "FkwxixstOGo"
+    },
+    {
+      "name": "Maya Goetsch",
+      "number": "456-78-78",
+      "id": "swkzqW2Wf08"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
