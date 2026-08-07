@@ -1,3 +1,5 @@
+require('dotenv').config()
+const Person = require('./models/person')
 const express = require('express')
 const morgan = require('morgan')
 const app = express()
@@ -15,94 +17,92 @@ app.use(morgan((tokens, req, res) => {
   ].join(' ')
 }))
 
-
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 const BASE_URL = "api/persons"
-
-let phonebook = [
-    { 
-      "id": "1",
-      "name": "Arto Hellas", 
-      "number": "040-123456"
-    },
-    { 
-      "id": "2",
-      "name": "Ada Lovelace", 
-      "number": "39-44-5323523"
-    },
-    { 
-      "id": "3",
-      "name": "Dan Abramov", 
-      "number": "12-43-234345"
-    },
-    { 
-      "id": "4",
-      "name": "Mary Poppendieck", 
-      "number": "39-23-6423122"
-    }
-]
-
-const genId = () => {
-  let randId = 0
-  do {
-    randId = Math.floor(Math.random() * (123456 - 0 + 1))
-  } while (phonebook.some(p => p.id === randId))
-
-  return randId
-}
 
 app.get('/', (req, res) => {
   res.send('<h1 align="center">Hello World</h1>')
 })
 
 app.get(`/${BASE_URL}`, (req, res) => {
-  res.json(phonebook)
+  Person.find({})
+    .then(persons => res.json(persons))
+    .catch(error => next(error))
 })
 
-app.get(`/${BASE_URL}/:id`, (req, res) => {
+app.get(`/${BASE_URL}/:id`, (req, res, next) => {
   const id = req.params.id
-  const person = phonebook.find(p => p.id === id)
-  console.log(person)
-  if (person) {
-    res.json(person)
-  } else {
-    res.status(404).end()
-  }
+  Person.findById(id)
+    .then(person => res.json(person))
+    .catch(error => next(error))
 })
 
-app.delete(`/${BASE_URL}/:id`, (req, res) => {
+app.delete(`/${BASE_URL}/:id`, (req, res, next) => {
   const id = req.params.id
-  phonebook = phonebook.filter(p => p.id !== id)
-  res.status(204).end()
+  Person.findByIdAndDelete(id)
+    .then(person => {
+      console.log(`entry for ${person.name} was removed`)
+      res.status(204).end()
+    })
+    .catch(error => next(error))
 })
 
-app.post(`/${BASE_URL}`, (req, res) => {
-  const person = req.body
-  if (phonebook.some(p => p.name === person.name)) {
-    res.status(409)
-    return res.json({error: 'name must be unique'})
-  }
-
-  if (!( person.name || false ) || !( person.number || false )) {
-    res.status(402)
-    return res.json({error: 'name or number missing from request'})
+app.post(`/${BASE_URL}`, (req, res, next) => {
+  const body = req.body
+  if(!body) {
+    return res.status(400).json({error : 'body missing'})
   }
   
-  const personObj = { 
-    name: person.name,
-    number: person.number,
-    id: genId(),
+  Person.findOne({name: body.name})
+    .then(personExists => {
+      if (personExists) {
+        Person.findByIdAndUpdate(personExists.id, {number: body.number})
+          .then(updatedPerson => res.json({name: body.name, number: body.number, id: personExists.id}))
+          .catch(error => next(error))
+      } else {
+        const person = new Person({
+          name: body.name, 
+          number: body.number,
+        })
+
+        person.save().then(savedPerson => {
+          res.json(savedPerson)
+        })
+      }
+    })  
+    .catch(error => next(error))  
+})
+
+app.get('/info', (req, res, next) => {
+  const date = new Date()
+  Person.find({})
+    .then(phonebook => 
+      res.send(`<div><p>Phonebook has info for ${phonebook.length} people</p><p>${date.toString()}</p></div>`)
+    )
+    .catch(error => next(error))
+})
+
+const unknownEndpoint = (req, res) => {
+  res.status(404).send({error: 'unkown endpoint'})
+}
+
+app.use(unknownEndpoint)
+
+const errorHandler = (error, req, res, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return res.status(400).send({ error: 'malformatted id' })
+  } 
+
+  if (error.name === "DocumentNotFoundError") {
+    return res.status(404).send({error: 'person not found'})
   }
 
-  phonebook = phonebook.concat(personObj)
-  res.status(200)
-  res.json(personObj)
-})
+  next(error)
+}
 
-app.get('/info', (req, res) => {
-  const date = new Date()
-  res.send(`<div><p>Phonebook has info for ${phonebook.length} people</p><p>${date.toString()}</p></div>`)
-})
+app.use(errorHandler)
 
 app.listen(PORT, () => {
   console.log(`Phonebook listening on port ${PORT}`)
