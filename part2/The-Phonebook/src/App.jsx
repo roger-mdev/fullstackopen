@@ -74,13 +74,21 @@ const App = () => {
               setNewNumber('')
           })
             .catch(error => {
-              console.log(error)
-              setPersons(persons.filter(person => person.name !== newName))
-              setStatus({
-              type: "failure",
-              message: `Information of ${newName} 
-                has already been removed from the server`})
-              setTimeout(setDefaultStatus, 3000)
+              if (error.response.status === 404) {
+                setPersons(persons.filter(person => person.name !== newName))
+                setStatus({
+                type: "failure",
+                message: `Information of ${newName} 
+                  has already been removed from the server`})
+                setTimeout(setDefaultStatus, 3000)
+              } else {
+                console.log(error)
+                setStatus({
+                  type: 'failure',
+                  message: error.response.data.error
+                })
+                setTimeout(setDefaultStatus, 5000)
+              }
             })
         } else {
           setStatus({
@@ -100,7 +108,14 @@ const App = () => {
           setPersons(persons.concat(response))
           setNewName('')
           setNewNumber('')
-      }) 
+      })
+      .catch(error => {
+        console.log(error /*.response.data.error*/)
+        setStatus({
+          type: "failure",
+          message: error.response.data.error
+        })
+      })
     }
   }
 
