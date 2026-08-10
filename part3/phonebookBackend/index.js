@@ -47,31 +47,34 @@ app.delete(`/${BASE_URL}/:id`, (req, res, next) => {
     .catch(error => next(error))
 })
 
-app.post(`/${BASE_URL}`, (req, res, next) => {
-  const body = req.body
-  if(!body) {
-    return res.status(400).json({error : 'body missing'})
-  }
-  
-  Person.findOne({name: body.name})
-    .then(personExists => {
-      if (personExists) {
-        Person.findByIdAndUpdate(personExists.id, {number: body.number})
-          .then(updatedPerson => res.json({name: body.name, number: body.number, id: personExists.id}))
-          .catch(error => next(error))
-      } else {
-        const person = new Person({
-          name: body.name, 
-          number: body.number,
-        })
+app.post(`/${BASE_URL}`, async (req, res, next) => {
+  try {
+    const body = req.body
+    if(!body.name || !body.number) {
+      return res.status(400).json({error : 'body missing'})
+    }
 
-        person.save().then(savedPerson => {
-          res.json(savedPerson)
-        })
-        .catch(error => next(error))
-      }
-    })  
-    .catch(error => next(error))  
+    const numberExists = await Person.findOne({number: body.number})
+    if(numberExists) {
+      return res.status(400).json({error: "that number already exists under a different person"})
+    }
+
+    const personExists = await Person.findOne({name: body.name})
+    if (personExists) {
+      const updatedPerson = await Person.findByIdAndUpdate(personExists.id, {number: body.number}, {returnDocument: 'after', runValidators: true})
+      res.json(updatedPerson)
+    } else {
+      const person = new Person({
+        name: body.name, 
+        number: body.number,
+      })
+
+      const saved = await person.save()
+      res.json(saved)
+    }
+  } catch (error) {
+    next(error)
+  }  
 })
 
 app.get('/info', (req, res, next) => {
