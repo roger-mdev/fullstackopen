@@ -55,14 +55,14 @@ const App = () => {
   } else if (persons.some(person => person.name === newName) 
       && persons.some(person => person.number !== newNumber)){
         console.log(persons.find(person => person.name === newName).id)
-        console.log(newPerson)
+        console.log('new person',newPerson)
         if (window.confirm(`${newName} is already in the phonebook, update their number?`)) {
           personServices
             .update(persons.find(person =>
               person.name === newName
               ).id, newPerson)
             .then(response => {
-              console.log(response)
+              console.log('response for person update', response)
               setPersons(persons.map(person => person.id === response.id 
                 ? response : person
               ))
@@ -75,6 +75,7 @@ const App = () => {
           })
             .catch(error => {
               if (error.response.status === 404) {
+                console.log(error)
                 setPersons(persons.filter(person => person.name !== newName))
                 setStatus({
                 type: "failure",
@@ -115,6 +116,7 @@ const App = () => {
           type: "failure",
           message: error.response.data.error
         })
+        setTimeout(setDefaultStatus, 3000)
       })
     }
   }
@@ -123,8 +125,8 @@ const App = () => {
     if (window.confirm("Do you want to delete this person")){
     personServices.remove(id)
       .then(response => {
-        console.log(response)
-        setPersons(persons.filter(person => person.id !== response.id))
+        console.log('response for person delete', response)
+        setPersons(persons.filter(person => person.id !== id))
         setStatus({
         type: "success",
         message: `Information of ${persons.find(person => person.id === id).name} 
@@ -132,7 +134,7 @@ const App = () => {
         setTimeout(setDefaultStatus, 3000)
       })
       .catch(error => {
-        setPersons(persons.filter(person => person.id !== response.id))
+        setPersons(persons.filter(person => person.id !== id))
         setStatus({
         type: "failure",
         message: `Information of ${persons.find(person => person.id === id).name} 
