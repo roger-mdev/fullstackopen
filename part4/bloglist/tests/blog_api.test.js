@@ -93,3 +93,36 @@ describe('Blog with missing likes property', () => {
   })
 })
 
+describe('HTTP delete request', () => {
+  test('deleting one blog', async () => {
+    const blogs = await helper.blogsInDb()
+    const blogToDelete = blogs[0]
+    await api
+      .delete(`/api/blogs/${blogToDelete.id}`)
+      .expect(204)
+    
+    const blogsAfter = await helper.blogsInDb()
+    assert(!blogsAfter.some(blog => blog.id === blogToDelete.id))
+  })
+})
+
+describe('HTTP patch test', () => {
+  test('patch on new like', async () => {
+    const blogs = await helper.blogsInDb()
+    const blogToUpdate = blogs[0]
+    const changes = {
+      likes: blogToUpdate.likes + 1
+    }
+    
+    const res = await api
+      .patch(`/api/blogs/${blogToUpdate.id}`)
+      .send(changes)
+      .expect(204)
+    
+    assert.strict(blogToUpdate.likes + 1, res.body.likes)
+  })
+})
+
+after(async () => {
+  await mongoose.connection.close()
+})
