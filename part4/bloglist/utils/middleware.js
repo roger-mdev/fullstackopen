@@ -7,6 +7,8 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json({ error: err.message })
   } else if (err.name === 'CastError') {
     return res.status(400).json({ error: err.message })
+  } else if (err.name === 'MongoServerError' && err.code === 11000) {
+    return res.status(400).json({ error: 'expected `username` to be unique' })
   }
 
   next(err)
